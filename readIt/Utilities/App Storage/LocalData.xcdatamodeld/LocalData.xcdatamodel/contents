@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="23E224" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="LocalMulti" representedClassName="LocalMulti" syncable="YES" codeGenerationType="class">
+        <attribute name="imageURL" optional="YES" attributeType="String"/>
+        <attribute name="multiName" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="LocalSubreddit" representedClassName="LocalSubreddit" syncable="YES" codeGenerationType="class">
+        <attribute name="belongsToMulti" optional="YES" attributeType="String"/>
+        <attribute name="iconURL" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="pinned" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="ReadPost" representedClassName="ReadPost" syncable="YES" codeGenerationType="class">
+        <attribute name="readPostId" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="SavedComment" representedClassName="SavedComment" syncable="YES" codeGenerationType="class">
+        <attribute name="author" optional="YES" attributeType="String"/>
+        <attribute name="body" optional="YES" attributeType="String"/>
+        <attribute name="depth" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="directURL" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="isCollapsed" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isRootCollapsed" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="parentID" optional="YES" attributeType="String"/>
+        <attribute name="postLink" optional="YES" attributeType="String"/>
+        <attribute name="savedTimestamp" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="score" optional="YES" attributeType="String"/>
+        <attribute name="stickied" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="time" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="SavedPost" representedClassName="SavedPost" syncable="YES" codeGenerationType="class">
+        <attribute name="author" optional="YES" attributeType="String"/>
+        <attribute name="commentsCount" optional="YES" attributeType="String"/>
+        <attribute name="commentsURL" optional="YES" attributeType="String"/>
+        <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="mediaURL" optional="YES" attributeType="String"/>
+        <attribute name="savedTimestamp" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="subreddit" optional="YES" attributeType="String"/>
+        <attribute name="tag" optional="YES" attributeType="String"/>
+        <attribute name="thumbnailURL" optional="YES" attributeType="String"/>
+        <attribute name="time" optional="YES" attributeType="String"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <attribute name="votes" optional="YES" attributeType="String"/>
+    </entity>
+</model>
