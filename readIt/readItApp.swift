@@ -65,6 +65,13 @@ struct ContentView: View {
                 Label("Search", systemImage: "text.magnifyingglass")
             }
             
+            getNavigationView {
+                CommunityView(appTheme: appTheme, textSizePreference: textSizePreference, userId: ReadItLoginUtil.shared.getSavedUsername())
+            }
+            .tabItem {
+                Label("Community", systemImage: "text.bubble")
+            }
+            
             // Settings Tab
             getNavigationView(forceNonSplitStack: true) {
                 SettingsView(textSizePreference: textSizePreference)

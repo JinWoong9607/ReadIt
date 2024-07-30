@@ -33,13 +33,16 @@ struct HandleDeepLinksDisplay: ViewModifier {
                 CommentTranslator(selectedComment: .constant(response.selectedText))
             }
             .navigationDestination(for: CommentDetailResponse.self) { response in
-                CommentDetail(comment: response.comment)
+                CommentDetail(comment: response.comment, appTheme: appTheme, textSizePreference: textSizePreference)
             }
             .navigationDestination(for: PostBodyResponse.self) { response in
                 PostBodyView(postBody: response)
             }
             .navigationDestination(for: PostTranslatorResponse.self) { response in
                 PostTranslatorView(selectedBody: response.selectedBody)
+            }
+            .navigationDestination(for: CommunityResponse.self) { response in
+                CommunityDetailView(comment: response.comment)
             }
     }
 }

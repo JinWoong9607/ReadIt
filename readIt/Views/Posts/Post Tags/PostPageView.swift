@@ -310,7 +310,7 @@ struct PostPageView: View {
         })
     }
     private func createCommentView(for comment: Comment, index: Int) -> some View {
-        let isReplying = Binding<Bool>(
+        _ = Binding<Bool>(
             get: { replyingToCommentId == comment.id },
             set: { if $0 { replyingToCommentId = comment.id } else { replyingToCommentId = nil } }
         )

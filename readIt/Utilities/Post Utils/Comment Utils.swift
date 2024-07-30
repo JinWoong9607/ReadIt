@@ -176,60 +176,6 @@ class CommentUtils {
             return nil
         }
     }
-    
-    func unifyAndSortComments(readItComments: [ReadItComment], comments: [Comment]) -> [UnifiedComment] {
-        let unifiedFromReadIt = readItComments.map { UnifiedComment(from: $0) }
-        let unifiedFromComments = comments.map { UnifiedComment(from: $0) }
-        let combinedComments = unifiedFromReadIt + unifiedFromComments
-        return combinedComments.sorted(by: { DateFormatter.commentDateFormatter.date(from: $0.time ) ?? Date() < DateFormatter.commentDateFormatter.date(from: $1.time) ?? Date() })
-    }
-}
-
-struct UnifiedComment: Equatable, Codable, Hashable {
-    let id: String
-    let parentID: String?
-    let userId: String?
-    let author: String
-    let score: Int
-    let time: String
-    let body: String
-    let depth: Int
-    let stickied: Bool
-    let directURL: String
-    var isCollapsed: Bool
-    var isRootCollapsed: Bool
-}
-
-extension UnifiedComment {
-    init(from readItComment: ReadItComment) {
-        self.id = readItComment.id
-        self.parentID = readItComment.parentID
-        self.userId = readItComment.userId
-        self.author = readItComment.author
-        self.score = Int(readItComment.score)
-        self.time = readItComment.time
-        self.body = readItComment.body
-        self.depth = readItComment.depth
-        self.stickied = readItComment.stickied
-        self.directURL = readItComment.directURL
-        self.isCollapsed = readItComment.isCollapsed
-        self.isRootCollapsed = readItComment.isRootCollapsed
-    }
-
-    init(from comment: Comment) {
-        self.id = comment.id
-        self.parentID = comment.parentID
-        self.userId = nil  // Assuming Comment does not have a userId
-        self.author = comment.author
-        self.score = Int(comment.score) ?? 0
-        self.time = comment.time
-        self.body = comment.body
-        self.depth = comment.depth
-        self.stickied = comment.stickied
-        self.directURL = comment.directURL
-        self.isCollapsed = comment.isCollapsed
-        self.isRootCollapsed = comment.isRootCollapsed
-    }
 }
 
 extension DateFormatter {
@@ -238,53 +184,4 @@ extension DateFormatter {
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
         return formatter
     }()
-}
-
-extension CommentUtils {
-    func getNumberOfDescendants(for comment: UnifiedComment, in comments: [UnifiedComment]) -> Int {
-        let childComments = comments.filter { $0.parentID == comment.id }
-        let directDescendants = childComments.count
-        let indirectDescendants = childComments.reduce(0) { $0 + getNumberOfDescendants(for: $1, in: comments) }
-        return directDescendants + indirectDescendants
-    }
-}
-
-
-extension CommentUtils {
-    func toggleSaved(context: NSManagedObjectContext, comment: UnifiedComment) {
-        // 먼저 이미 저장된 댓글인지 확인합니다.
-        let fetchRequest: NSFetchRequest<SavedComment> = SavedComment.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "id == %@", comment.id)
-        
-        do {
-            let existingComments = try context.fetch(fetchRequest)
-            
-            if let existingComment = existingComments.first {
-                // 이미 저장된 댓글이 있다면 삭제합니다.
-                context.delete(existingComment)
-                print("댓글 저장 해제: \(comment.id)")
-            } else {
-                // 저장된 댓글이 없다면 새로 생성하여 저장합니다.
-                let savedComment = SavedComment(context: context)
-                savedComment.id = comment.id
-                savedComment.parentID = comment.parentID
-                savedComment.author = comment.author
-                savedComment.score = String(comment.score) // score가 String이라고 가정
-                savedComment.time = comment.time // Date 타입으로 변환 필요할 수 있음
-                savedComment.body = comment.body
-                savedComment.depth = Int32(comment.depth)
-                savedComment.stickied = comment.stickied
-                savedComment.directURL = comment.directURL
-                savedComment.isCollapsed = comment.isCollapsed
-                savedComment.isRootCollapsed = comment.isRootCollapsed
-                
-                print("댓글 저장: \(comment.id)")
-            }
-            
-            // 변경사항을 저장합니다.
-            try context.save()
-        } catch {
-            print("댓글 저장/해제 중 오류 발생: \(error)")
-        }
-    }
 }

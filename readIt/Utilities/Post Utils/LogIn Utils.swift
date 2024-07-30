@@ -50,7 +50,10 @@ struct ErrorMessageFormatter {
 
 
 class ReadItLoginUtil : ObservableObject {
-    @Published var username: String = "ID"
+    
+    static let shared = ReadItLoginUtil()
+    
+    @Published var username: String = UserDefaults.standard.string(forKey: "savedUsername") ?? "ID"
     @Published var password: String = "Password"
     @Published var confirmPassword: String = ""
     @Published var formErrorMessage: String?
@@ -74,6 +77,7 @@ class ReadItLoginUtil : ObservableObject {
                 completion(response.success)
                 if response.success {
                     LoginService.shared.saveToken(response.token)
+                    self.saveUsername(self.username)
                 }
             }.store(in: &cancellables)
 
@@ -82,11 +86,13 @@ class ReadItLoginUtil : ObservableObject {
         let auth = LoginService.shared
         auth.logout()
         isLoggedIn = auth.isLoggedIn()
+        clearSavedUsername()
     }
     
     func isFormValid() -> Bool {
         return !(username.isEmpty || password.isEmpty || confirmPassword.isEmpty || password != confirmPassword)
     }
+    
     
     func performSignUp() {
         if isFormValid() {
@@ -114,6 +120,18 @@ class ReadItLoginUtil : ObservableObject {
         } else {
             formErrorMessage = "입력 폼이 유효하지 않습니다"
         }
+    }
+    
+    private func saveUsername(_ username: String) {
+        UserDefaults.standard.set(username, forKey: "savedUsername")
+    }
+    
+    func getSavedUsername() -> String {
+        return UserDefaults.standard.string(forKey: "savedUsername") ?? ""
+    }
+    
+    private func clearSavedUsername() {
+        UserDefaults.standard.removeObject(forKey: "savedUsername")
     }
 }
 

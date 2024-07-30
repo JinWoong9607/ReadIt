@@ -27,4 +27,14 @@ class TimeFormatUtil {
             return "Invalid Date"
         }
     }
+    
+    func readItTimeUtil(fromTimeInterval timeInterval: Double) -> String {
+        let convertedTime = timeInterval
+        print(convertedTime)
+        
+        let date = Date(timeIntervalSince1970: convertedTime)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
 }

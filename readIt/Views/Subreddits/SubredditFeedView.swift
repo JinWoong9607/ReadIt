@@ -125,7 +125,7 @@ struct SubredditFeedView: View {
             // reuses the initial view from the sidebar selection.
             clearFeedAndReload()
         }
-        .searchable(text: $searchTerm, prompt: "Search \((titleOverride != nil) ? "OpenArtemisFeed/\(titleOverride!)" : "r/\(subredditName)")")
+        .searchable(text: $searchTerm, prompt: "Search \((titleOverride != nil) ? "readItFeed/\(titleOverride!)" : "r/\(subredditName)")")
         .onSubmit(of: .search) { clearFeedAndReload(withSearchTerm: "subreddit:\(subredditName) \(searchTerm)") }
         .onChange(of: searchTerm) { val, _ in if searchTerm.isEmpty { clearFeedAndReload() }}
     }
