@@ -6,9 +6,12 @@
 //
 
 import SwiftUI
+import os
 
 struct CommunityDetailView: View {
     let comment: ReadItComment
+    let appTheme: AppThemeSettings
+    let textSizePreference: TextSizePreference
     
     @State private var relatedComments: [ReadItComment] = []
     @State private var isLoading = false
@@ -16,29 +19,23 @@ struct CommunityDetailView: View {
     @State private var replyText = ""
     @State private var isReplying = false
     @State private var replyingToId: Int?
+    @State private var selectedLink: String?
+    @State private var loadedPost: Post?
+    @State private var isPostPagePresented = false
+    
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "CommunityDetailView")
     
     var body: some View {
         VStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // 상위 댓글의 본문만 표시
-                    Text(comment.commentBody)
-                        .font(.body)
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(12)
-                        .shadow(color: Color.gray.opacity(0.2), radius: 5, x: 0, y: 2)
-                    
-                    // 전체 댓글 내용 표시
-                    commentView(comment: comment, isMainComment: true)
-                        .padding(.bottom)
-                    
                     if isLoading {
                         ProgressView()
                     } else if !relatedComments.isEmpty {
                         ForEach(organizeComments(relatedComments), id: \.id) { commentData in
                             commentView(comment: commentData.comment, isMainComment: false)
-                                .padding(.leading, CGFloat(commentData.depth * 20))  // 대댓글 효과를 위한 들여쓰기
+                                .padding(.leading, CGFloat(commentData.depth * 20))
                         }
                     } else if let error = errorMessage {
                         Text(error)
@@ -51,24 +48,29 @@ struct CommunityDetailView: View {
                 .padding()
             }
             
-            // 댓글 입력 버튼
-            Button(action: {
-                isReplying = true
-                replyingToId = nil  // 메인 댓글에 대한 답글
-            }) {
-                Text("댓글 작성")
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+            if isReplying {
+                replyView
+            } else {
+                Button(action: {
+                    isReplying = true
+                    replyingToId = nil
+                }) {
+                    Text("댓글 작성")
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .padding()
             }
-            .padding()
         }
-        .navigationBarTitle("댓글 상세", displayMode: .inline)
+        .navigationBarTitle("관련 댓글", displayMode: .inline)
         .onAppear(perform: loadRelatedComments)
-        .sheet(isPresented: $isReplying) {
-            replyView
+        .sheet(isPresented: $isPostPagePresented) {
+            if let post = loadedPost {
+                PostPageView(post: post, appTheme: appTheme, textSizePreference: textSizePreference)
+            }
         }
     }
     
@@ -85,16 +87,18 @@ struct CommunityDetailView: View {
             
             Text(comment.body)
                 .font(.body)
+                .onTapGesture {
+                    handleBodyTap(comment: comment)
+                }
             
             HStack {
                 Spacer()
-                
                 Button(action: {
                     isReplying = true
-                    replyingToId = comment.commentId
+                    replyingToId = isMainComment ? comment.commentId : comment.parentCommentId ?? comment.commentId
                 }) {
                     Image(systemName: "arrowshape.turn.up.left")
-                    Text(isMainComment ? "댓글" : "답글")
+                    Text("답글")
                 }
                 .foregroundColor(.blue)
             }
@@ -127,6 +131,14 @@ struct CommunityDetailView: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
             }
+            Button(action: { isReplying = false }) {
+                Text("취소")
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+            }
             .padding()
         }
         .padding()
@@ -138,7 +150,14 @@ struct CommunityDetailView: View {
             isLoading = false
             switch result {
             case .success(let loadedComments):
-                self.relatedComments = loadedComments.filter { $0.commentId != comment.commentId }
+                // 원본 댓글을 제외하고, 중복된 댓글도 제거합니다.
+                self.relatedComments = loadedComments
+                    .filter { $0.commentId != self.comment.commentId }
+                    .reduce(into: [ReadItComment]()) { result, comment in
+                        if !result.contains(where: { $0.commentId == comment.commentId }) {
+                            result.append(comment)
+                        }
+                    }
             case .failure(let error):
                 self.errorMessage = error.localizedDescription
             }
@@ -146,17 +165,19 @@ struct CommunityDetailView: View {
     }
     
     private func submitReply() {
-        let parentDepth = replyingToId == nil ? 0 : (relatedComments.first(where: { $0.commentId == replyingToId })?.depth ?? 0)
+        let isTopLevelComment = replyingToId == nil
+        let parentComment = isTopLevelComment ? nil : (relatedComments.first(where: { $0.commentId == replyingToId }))
+        
         let newComment = ReadItComment(
             commentId: 0,
             userId: ReadItLoginUtil.shared.getSavedUsername(),
-            parentCommentId: replyingToId,
+            parentCommentId: isTopLevelComment ? nil : replyingToId,
             commentBody: comment.commentBody,
             author: ReadItLoginUtil.shared.getSavedUsername(),
             score: 0,
             time: String(Date().timeIntervalSince1970),
             body: replyText,
-            depth: parentDepth + 1,
+            depth: isTopLevelComment ? 0 : (parentComment?.depth ?? 0) + 1,
             stickied: false,
             directURL: comment.directURL,
             isCollapsed: false,
@@ -166,59 +187,100 @@ struct CommunityDetailView: View {
         ReadItCommentService.shared.sendComment(comment: newComment) { result in
             switch result {
             case .success(let postedComment):
-                print("Posted comment: \(postedComment)")
+                logger.info("댓글 게시 성공: commentId=\(postedComment.commentId), isTopLevelComment=\(isTopLevelComment)")
+                
                 DispatchQueue.main.async {
                     self.relatedComments.append(postedComment)
+                    self.sortAndUpdateComments()
+                    self.replyingToId = nil
                 }
             case .failure(let error):
-                print("Failed to post comment: \(error.localizedDescription)")
+                logger.error("댓글 게시 실패: error=\(error.localizedDescription)")
                 self.errorMessage = "댓글 게시에 실패했습니다: \(error.localizedDescription)"
             }
         }
         
         replyText = ""
         isReplying = false
+        replyingToId = nil
     }
     
-    // 댓글을 계층 구조로 정리하는 함수
+    private func sortAndUpdateComments() {
+        relatedComments.sort { (comment1, comment2) -> Bool in
+            if comment1.depth == comment2.depth {
+                return (Double(comment1.time) ?? 0) < (Double(comment2.time) ?? 0)
+            }
+            return comment1.depth < comment2.depth
+        }
+    }
+    
     private func organizeComments(_ comments: [ReadItComment]) -> [CommentData] {
-            var organized: [CommentData] = []
-            var commentDict: [Int: CommentData] = [:]
+        var organized: [CommentData] = []
+        var commentDict: [Int: CommentData] = [:]
+        
+        for comment in comments {
+            let commentData = CommentData(comment: comment)
+            commentDict[comment.commentId] = commentData
             
-            for comment in comments {
-                let commentData = CommentData(comment: comment)
-                commentDict[comment.commentId] = commentData
-                
-                if let parentId = comment.parentCommentId, let parent = commentDict[parentId] {
-                    parent.children.append(commentData)
-                } else {
-                    organized.append(commentData)
-                }
+            if let parentId = comment.parentCommentId, let parent = commentDict[parentId] {
+                parent.children.append(commentData)
+            } else {
+                organized.append(commentData)
             }
-            
-            return flattenComments(organized)
         }
+        
+        return flattenComments(organized)
+    }
     
-    // 계층 구조의 댓글을 평탄화하는 함수
     private func flattenComments(_ comments: [CommentData]) -> [CommentData] {
-            var flattened: [CommentData] = []
-            
-            for comment in comments {
-                flattened.append(comment)
-                flattened.append(contentsOf: flattenComments(comment.children))
+        var flattened: [CommentData] = []
+        
+        for comment in comments {
+            flattened.append(comment)
+            flattened.append(contentsOf: flattenComments(comment.children))
+        }
+        
+        return flattened
+    }
+    
+    private func handleBodyTap(comment: ReadItComment) {
+        let originalLink = comment.directURL
+        logger.info("댓글 탭됨: commentId=\(comment.commentId), link=\(originalLink)")
+        loadPostFromURL(url: originalLink)
+    }
+    
+    private func loadPostFromURL(url: String) {
+        guard let encodedURL = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let validURL = URL(string: encodedURL) else {
+            logger.error("유효하지 않은 URL: \(url)")
+            self.errorMessage = "유효하지 않은 URL입니다."
+            return
+        }
+        
+        isLoading = true
+        logger.info("포스트 로딩 시작: url=\(validURL.absoluteString)")
+        
+        RedditScraper.scrapePostFromURL(url: validURL.absoluteString) { result in
+            isLoading = false
+            switch result {
+            case .success(let post):
+                self.loadedPost = post
+                self.isPostPagePresented = true
+                logger.info("포스트 로딩 성공: postId=\(post.id)")
+            case .failure(let error):
+                self.errorMessage = error.localizedDescription
+                logger.error("포스트 로딩 실패: error=\(error.localizedDescription)")
             }
-            
-            return flattened
         }
     }
+}
 
-// 댓글 데이터를 저장하는 구조체
 class CommentData: Identifiable {
     let id: Int
     let comment: ReadItComment
     var depth: Int
     var children: [CommentData] = []
-
+    
     init(comment: ReadItComment) {
         self.id = comment.commentId
         self.comment = comment

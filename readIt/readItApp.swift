@@ -72,13 +72,6 @@ struct ContentView: View {
                 Label("Community", systemImage: "text.bubble")
             }
             
-            // Settings Tab
-            getNavigationView(forceNonSplitStack: true) {
-                SettingsView(textSizePreference: textSizePreference)
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gear")
-            }
         }
         .overlay {
             if GlobalLoadingManager.shared.loading {

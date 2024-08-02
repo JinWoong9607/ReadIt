@@ -10,7 +10,7 @@ import CoreData
 import Defaults
 import SwiftUI
 
-struct Comment: Equatable, Codable, Hashable {
+struct Comment: Identifiable, Equatable, Codable, Hashable {
     let id: String
     let parentID: String?
     let author: String
@@ -184,4 +184,22 @@ extension DateFormatter {
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
         return formatter
     }()
+}
+
+extension Comment {
+    init(from readItComment: ReadItComment) {
+        self.init(
+            id: String(readItComment.commentId),
+            parentID: readItComment.parentCommentId != nil ? String(readItComment.parentCommentId!) : nil,
+            author: readItComment.body,
+            score: readItComment.author,
+            time: String(readItComment.score),
+            body: readItComment.time,
+            depth: readItComment.depth,
+            stickied: readItComment.stickied,
+            directURL: readItComment.directURL,
+            isCollapsed: readItComment.isCollapsed,
+            isRootCollapsed: readItComment.isRootCollapsed
+        )
+    }
 }

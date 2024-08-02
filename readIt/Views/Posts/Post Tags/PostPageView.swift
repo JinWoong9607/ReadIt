@@ -24,7 +24,7 @@ struct PostPageView: View {
         entity: SavedPost.entity(),
         sortDescriptors: []
     ) var savedPosts: FetchedResults<SavedPost>
-
+    
     @FetchRequest(
         entity: SavedComment.entity(),
         sortDescriptors: []
@@ -47,13 +47,23 @@ struct PostPageView: View {
     @State private var replyingToCommentId: String? = nil
     @State private var replyText: String = ""
     
-    private func submitReply(for comment: Comment) {
-            print("Submitting reply for comment: \(comment.id)")
-            print("Reply text: \(replyText)")
-            
-            replyingToCommentId = nil
-            replyText = ""
+    @State private var showTranslation = false
+    @State private var translatedText: String = ""
+    @State private var translationError: String = ""
+    
+    init(post: Post, appTheme: AppThemeSettings, textSizePreference: TextSizePreference) {
+            self.post = post
+            self.appTheme = appTheme
+            self.textSizePreference = textSizePreference
         }
+    
+    private func submitReply(for comment: Comment) {
+        print("Submitting reply for comment: \(comment.id)")
+        print("Reply text: \(replyText)")
+        
+        replyingToCommentId = nil
+        replyText = ""
+    }
     
     var body: some View {
         GeometryReader{ proxy in
@@ -66,27 +76,44 @@ struct PostPageView: View {
                     PostFeedView(post: post, forceAuthorToDisplay: true, appTheme: appTheme, textSizePreference: textSizePreference)
                         .savedIndicator(isSaved)
                     
-                        if let postBody = postBody {
-                            
-                            NavigationLink(value: PostBodyResponse(content: postBody)) {
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text("Post Body")
-                                            .font(textSizePreference.caption)
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                    }
-                                    
-                                    Markdown(postBody)
-                                        .markdownTheme(.readItMarkdown(fontSize: textSizePreference.bodyFontSize))
-                                }
-                                .padding(EdgeInsets(top: 0, leading: 8, bottom: 8, trailing: 8))
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Toggle(isOn: $showTranslation) {
+                                Label("Translate", systemImage: "globe")
                             }
-                            DividerView(frameHeight: 10, appTheme: appTheme)
-                        } else {
-                            DividerView(frameHeight: 10, appTheme: appTheme)
+                            .toggleStyle(.button)
+                            .controlSize(.small)
                         }
+                        
+                        if showTranslation {
+                            translationView
+                                .padding(.bottom, 16)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    
+                    if let postBody = postBody {
+                        
+                        NavigationLink(value: PostBodyResponse(content: postBody)) {
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("Post Body")
+                                        .font(textSizePreference.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                
+                                Markdown(postBody)
+                                    .markdownTheme(.readItMarkdown(fontSize: textSizePreference.bodyFontSize))
+                            }
+                            .padding(EdgeInsets(top: 0, leading: 8, bottom: 8, trailing: 8))
+                        }
+                        DividerView(frameHeight: 10, appTheme: appTheme)
+                    } else {
+                        DividerView(frameHeight: 10, appTheme: appTheme)
+                    }
                     if !comments.isEmpty {
                         if commentsURLOverride != nil && !isLoadAllCommentsPressed {
                             Button(action: {
@@ -123,12 +150,12 @@ struct PostPageView: View {
                                                 textSizePreference: textSizePreference,
                                                 onCommentSelected: { selectedComment in
                                         coordinator.path.append(CommentDetailResponse(comment: selectedComment))
-                                        }
+                                    }
                                     )
                                     .frame(maxWidth: .infinity)
                                     .padding(.leading, CGFloat(comment.depth) * 10)
-                                .themedBackground(appTheme: appTheme)
-                                .savedIndicator(isSaved)
+                                    .themedBackground(appTheme: appTheme)
+                                    .savedIndicator(isSaved)
                                 }
                                 .gestureActions(
                                     primaryLeadingAction: GestureAction(symbol: .init(emptyName: "chevron.up", fillName: "chevron.up"), color: .blue, action: {
@@ -202,7 +229,7 @@ struct PostPageView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-
+        
         .toolbar {
             let sortMenuView = PostUtils.shared.buildSortingMenu(selectedOption: self.sortOption) { option in
                 withAnimation { self.sortOption = option }
@@ -316,7 +343,7 @@ struct PostPageView: View {
         )
         
         let numberOfChildren = comment.isRootCollapsed ?
-            CommentUtils.shared.getNumberOfDescendants(for: comment, in: comments) : 0
+        CommentUtils.shared.getNumberOfDescendants(for: comment, in: comments) : 0
         
         return Button(action: {
             withAnimation(.spring()) {
@@ -336,6 +363,44 @@ struct PostPageView: View {
         .frame(maxWidth: .infinity)
         .padding(.leading, CGFloat(comment.depth) * 10)
     }
+    
+    private var translationView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !translatedText.isEmpty {
+                Text(translatedText)
+                    .font(.subheadline)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+            } else if !translationError.isEmpty {
+                Text(translationError)
+                    .font(.subheadline)
+                    .foregroundColor(.red)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+        .animation(.easeInOut, value: showTranslation)
+        .transition(.opacity)
+        .onAppear {
+            if translatedText.isEmpty && translationError.isEmpty {
+                    translateComment()
+                }
+        }
+    }
+    
+    private func translateComment() {
+        let textToTranslate = post.title + "\n\n" + (postBody ?? "")
+        TranslationService.translateComment(comment: textToTranslate) { translated, error, show in
+            self.translatedText = translated
+            self.translationError = error
+            self.showTranslation = show
+        }
+    }
 }
 
 struct CommentDetailResponse: Hashable {
@@ -344,11 +409,11 @@ struct CommentDetailResponse: Hashable {
 
 struct PostBodyResponse: Hashable {
     let content: String
-
+    
     func hash(into hasher: inout Hasher) {
         hasher.combine(content)
     }
-
+    
     static func == (lhs: PostBodyResponse, rhs: PostBodyResponse) -> Bool {
         return lhs.content == rhs.content
     }

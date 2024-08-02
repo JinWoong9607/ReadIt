@@ -27,7 +27,7 @@ struct HandleDeepLinksDisplay: ViewModifier {
                 ProfileView(username: response.username, appTheme: appTheme, textSizePreference: textSizePreference)
             }
             .navigationDestination(for: PostResponse.self) { response in
-                PostPageView(post: response.post, commentsURLOverride: response.commentsURLOverride, appTheme: appTheme, textSizePreference: textSizePreference)
+                PostPageView(post: response.post, appTheme: appTheme, textSizePreference: textSizePreference)
             }
             .navigationDestination(for: CommentTranslatorResponse.self) { response in
                 CommentTranslator(selectedComment: .constant(response.selectedText))
@@ -42,8 +42,20 @@ struct HandleDeepLinksDisplay: ViewModifier {
                 PostTranslatorView(selectedBody: response.selectedBody)
             }
             .navigationDestination(for: CommunityResponse.self) { response in
-                CommunityDetailView(comment: response.comment)
+                CommunityDetailView(comment: response.comment, appTheme: appTheme, textSizePreference: textSizePreference)
             }
+            .navigationDestination(for: CommentViewResponse.self) { response in
+                CommentView(
+                    comment: response.comment,
+                    numberOfChildren: response.numberOfChildren,
+                    postAuthor: response.postAuthor,
+                    appTheme: appTheme,
+                    textSizePreference: textSizePreference
+                ) { _ in
+                    print("Comment selected in CommentView")
+                }
+            }
+        
     }
 }
 

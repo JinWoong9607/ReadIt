@@ -53,8 +53,8 @@ class ReadItLoginUtil : ObservableObject {
     
     static let shared = ReadItLoginUtil()
     
-    @Published var username: String = UserDefaults.standard.string(forKey: "savedUsername") ?? "ID"
-    @Published var password: String = "Password"
+    @Published var username: String = ""
+    @Published var password: String = ""
     @Published var confirmPassword: String = ""
     @Published var formErrorMessage: String?
     @Published var isLoggedIn: Bool = false

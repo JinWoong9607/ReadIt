@@ -155,25 +155,34 @@ extension RedditScraper {
     }
     
     static func scrapePostFromURL(url: String, completion: @escaping (Result<Post, Error>) -> Void) {
-        guard let url = URL(string: url) else {
-            completion(.failure(NSError(domain: "Invalid URL", code: 0, userInfo: nil)))
+        print("Attempting to scrape post from URL: \(url)")
+        guard let urlObject = URL(string: url) else {
+            let error = NSError(domain: "Invalid URL", code: 0, userInfo: nil)
+            print("Error: Invalid URL - \(url)")
+            completion(.failure(error))
             return
         }
         
-        
-        webViewManager.loadURLAndGetHTML(url: url) { result in
+        webViewManager.loadURLAndGetHTML(url: urlObject) { result in
             switch result {
             case .success(let htmlContent):
+                print("Successfully retrieved HTML content from URL: \(url)")
                 do {
-                    // trackingParamRemover goes on a bit of an adventure and needs to be passed all the way down to privacyURL(trackingParamRemover: trackingParamRemover). It can be set to nil.
                     let post = try parsePostData(html: htmlContent).first
                     if let post = post {
+                        print("Successfully parsed post data from HTML content for URL: \(url)")
                         completion(.success(post))
+                    } else {
+                        let error = NSError(domain: "Post Parsing Error", code: 1, userInfo: [NSLocalizedDescriptionKey: "No post data found in HTML"])
+                        print("Error: No post data found in HTML content from URL: \(url)")
+                        completion(.failure(error))
                     }
                 } catch {
+                    print("Error while parsing post data for URL \(url): \(error.localizedDescription)")
                     completion(.failure(error))
                 }
             case .failure(let error):
+                print("Failed to load HTML from URL: \(url) with error: \(error.localizedDescription)")
                 completion(.failure(error))
             }
         }
@@ -211,4 +220,17 @@ func redditLinksToInternalLinks(_ element: Element) throws -> String {
     } catch {
         throw error
     }
+}
+
+func convertRedditLinkToInternal(_ link: String) -> String {
+    if link.hasPrefix("/r/") || link.hasPrefix("/u/") || link.contains("reddit.com") {
+        return "readIt://\(link)"
+    } else if link.hasPrefix("http://") || link.hasPrefix("https://") {
+        if let url = URL(string: link), var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.scheme = nil
+            let trimmedLink = components.string?.trimmingCharacters(in: .punctuationCharacters) ?? ""
+            return "readIt://\(trimmedLink)"
+        }
+    }
+    return "readIt://\(link)"
 }

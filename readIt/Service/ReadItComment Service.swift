@@ -218,3 +218,23 @@ class ReadItCommentService {
             }
     }
 }
+
+extension ReadItComment {
+    init(from comment: Comment) {
+        self.init(
+            commentId: Int(comment.id) ?? 0,
+            userId: comment.author,
+            parentCommentId: comment.parentID != nil ? Int(comment.parentID!) : nil,
+            commentBody: comment.body,
+            author: comment.author,
+            score: Int(comment.score) ?? 0,
+            time: String(Date().timeIntervalSince1970),
+            body: comment.body,
+            depth: comment.depth,
+            stickied: false,
+            directURL: comment.directURL,
+            isCollapsed: false,
+            isRootCollapsed: false
+        )
+    }
+}
